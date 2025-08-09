@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { detectBullshit } from '@josheverett/bullshit-detector';
 
 // Helper functions for streaming chunks (adapted for Next.js streaming)
 function createChunkData(id: string, content: string | null, finish_reason: string | null = null): Uint8Array {
@@ -51,11 +52,22 @@ export async function POST(request: NextRequest) {
     // Generate a unique ID for this completion
     const completionId = generateUUID();
     
+    // Find the most recent user message
+    const userMessages = messages.filter((msg: any) => msg.role === 'user');
+    const mostRecentUserMessage = userMessages[userMessages.length - 1];
+    
+    if (!mostRecentUserMessage || !mostRecentUserMessage.content) {
+      throw new Error('No user message found');
+    }
+    
+    // Run bullshit detection on the user message content
+    const bsResult = await detectBullshit(mostRecentUserMessage.content);
+    
     // Create a readable stream for Server-Sent Events
     const stream = new ReadableStream({
       start(controller) {
-        // Send the "hello world" chunk
-        controller.enqueue(createChunkData(completionId, "hello world"));
+        // Send the truth string from bullshit detector
+        controller.enqueue(createChunkData(completionId, bsResult.truth));
         
         // Send the end token
         controller.enqueue(createEndToken());
