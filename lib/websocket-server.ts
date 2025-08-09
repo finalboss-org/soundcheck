@@ -66,7 +66,8 @@ export function getWebSocketServer(): WebSocketServer {
     console.log('WebSocket server started on port 3001');
     return wss;
 
-  } catch (error: Error & { code?: string }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
     if (error.code === 'EADDRINUSE') {
       console.log('WebSocket server port 3001 already in use - reusing existing server');
       // If we can't create a new server, assume one exists and try to find it
