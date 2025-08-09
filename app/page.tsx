@@ -1,20 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BSAlert from './components/BSAlert';
 import AudioVisualizer from './components/AudioVisualizer';
 import ConnectionStatus from './components/ConnectionStatus';
 import RecordingControls from './components/RecordingControls';
 import PermissionError from './components/PermissionError';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 export default function Home() {
-  const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [bsAlert, setBsAlert] = useState<{ message: string } | null>(null);
   const [permissionError, setPermissionError] = useState(false);
   const [audioData, setAudioData] = useState<Uint8Array | undefined>();
+  
+  // WebSocket connection
+  const { isConnected, lastMessage, sendMessage } = useWebSocket();
+
+  // Handle incoming WebSocket messages
+  useEffect(() => {
+    if (lastMessage) {
+      console.log('Processing WebSocket message:', lastMessage);
+      
+      // Handle different message types
+      switch (lastMessage.type) {
+        case 'chat_completion_triggered':
+          // Display the "hello world" message when chat completion is triggered
+          setTranscription(prev => prev + `[WebSocket] ${lastMessage.message}\n`);
+          break;
+        case 'connected':
+          console.log('WebSocket connection established');
+          break;
+        case 'echo':
+          console.log('Echo received:', lastMessage.message);
+          break;
+        default:
+          console.log('Unknown message type:', lastMessage.type);
+      }
+    }
+  }, [lastMessage]);
 
   // Josh will wire these up to VAPI
   const handleRecordingToggle = () => {
@@ -34,6 +60,29 @@ export default function Home() {
 
   const handleClearTranscription = () => {
     setTranscription('');
+  };
+
+  // Test function to trigger chat completions (which should send WebSocket message)
+  const testChatCompletions = async () => {
+    try {
+      const response = await fetch('/api/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: 'Test message to trigger WebSocket' }
+          ]
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Chat completions request sent successfully');
+      }
+    } catch (error) {
+      console.error('Error testing chat completions:', error);
+    }
   };
 
   return (
@@ -109,6 +158,19 @@ export default function Home() {
                   onRecordingToggle={handleRecordingToggle}
                   onMuteToggle={handleMuteToggle}
                 />
+                
+                {/* WebSocket Test Button */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={testChatCompletions}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Test WebSocket (Trigger Chat Completion)
+                  </button>
+                  <p className="mt-2 text-sm text-gray-500">
+                    WebSocket Status: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+                  </p>
+                </div>
               </div>
 
               {/* Transcription Section */}

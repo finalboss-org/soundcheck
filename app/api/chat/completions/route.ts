@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectBullshit } from '@josheverett/bullshit-detector';
+import { broadcastToClients, getWebSocketServer } from '../../../../lib/websocket-server';
 
 // Helper functions for streaming chunks (adapted for Next.js streaming)
 function createChunkData(id: string, content: string | null, finish_reason: string | null = null): Uint8Array {
@@ -59,6 +60,17 @@ export async function POST(request: NextRequest) {
     if (!mostRecentUserMessage || !mostRecentUserMessage.content) {
       throw new Error('No user message found');
     }
+
+    // Initialize WebSocket server
+    getWebSocketServer();
+
+    // Send "hello world" message via WebSocket when chat completion is requested
+    broadcastToClients({
+      type: 'chat_completion_triggered',
+      message: 'hello world',
+      timestamp: new Date().toISOString(),
+      completionId
+    });
 
     // Run bullshit detection on the user message content
     const bsResult = await detectBullshit(mostRecentUserMessage.content);
