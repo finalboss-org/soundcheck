@@ -64,6 +64,39 @@ export async function POST(request: NextRequest) {
     // Run bullshit detection on the user message content
     const bsResult = await detectBullshit(mostRecentUserMessage.content);
 
+    // Debug logging
+    // console.log('=== BULLSHIT DETECTION DEBUG ===');
+    // console.log('User message:', mostRecentUserMessage.content);
+    // console.log('bsResult type:', typeof bsResult);
+    // console.log('bsResult:', JSON.stringify(bsResult, null, 2));
+    // console.log('bsResult is array:', Array.isArray(bsResult));
+    // console.log('bsResult length:', bsResult?.length);
+    // console.log('bsResult[0]:', bsResult?.[0]);
+    // console.log('bsResult[0].truth:', bsResult?.[0]?.truth);
+    // console.log('=== END DEBUG ===');
+
+    // Validate bsResult structure
+    if (!bsResult || !Array.isArray(bsResult)) {
+      console.error('Invalid bsResult structure:', bsResult);
+      throw new Error(`Invalid bullshit detection result: ${JSON.stringify(bsResult)}`);
+    }
+
+    // Determine response content based on detection results
+    let responseContent: string;
+    if (bsResult.length === 0) {
+      // No bullshit detected - message appears truthful
+      responseContent = "No concerning claims detected. The statement appears to be factual and straightforward.";
+      console.log('No bullshit detected - returning positive assessment');
+    } else {
+      // Bullshit detected - return the truth
+      if (!bsResult[0] || typeof bsResult[0].truth !== 'string') {
+        console.error('Invalid bsResult[0] structure:', bsResult[0]);
+        throw new Error(`Invalid bullshit detection result structure: ${JSON.stringify(bsResult[0])}`);
+      }
+      responseContent = bsResult[0].truth;
+      console.log('Bullshit detected - returning truth correction');
+    }
+
     // Send full bullshit detection results via WebSocket
     broadcastToClients({
       type: 'chat_completion_triggered',
@@ -71,14 +104,15 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
       completionId,
       userMessage: mostRecentUserMessage.content,
-      bullshitDetection: bsResult
+      bullshitDetection: bsResult,
+      responseContent
     });
 
     // Create a readable stream for Server-Sent Events
     const stream = new ReadableStream({
       start(controller) {
-        // Send the truth string from bullshit detector
-        controller.enqueue(createChunkData(completionId, bsResult[0].truth));
+        // Send the response content
+        controller.enqueue(createChunkData(completionId, responseContent));
 
         // Send the end token
         controller.enqueue(createEndToken());
