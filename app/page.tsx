@@ -41,8 +41,23 @@ export default function Home() {
       // Handle different message types
       switch (lastMessage.type) {
         case 'chat_completion_triggered':
-          // Display the "hello world" message when chat completion is triggered
-          setTranscription(prev => prev + `[WebSocket] ${lastMessage.message}\n`);
+          // Display the bullshit detection results when chat completion is triggered
+          const bsData = lastMessage.bullshitDetection;
+          if (bsData && bsData.length > 0) {
+            const result = bsData[0];
+            const transcriptionText = `
+=== BULLSHIT DETECTION RESULTS ===
+User Message: ${lastMessage.userMessage || 'Unknown'}
+Truth: ${result.truth || 'No truth provided'}
+Confidence: ${result.confidence || 'Unknown'}
+Reasoning: ${result.reasoning || 'No reasoning provided'}
+====================================
+
+`;
+            setTranscription(prev => prev + transcriptionText);
+          } else {
+            setTranscription(prev => prev + `[WebSocket] ${lastMessage.message}\n`);
+          }
           break;
         case 'connected':
           console.log('WebSocket connection established');

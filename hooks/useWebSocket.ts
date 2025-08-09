@@ -7,6 +7,13 @@ interface WebSocketMessage {
   message: string;
   timestamp?: string;
   completionId?: string;
+  userMessage?: string;
+  bullshitDetection?: Array<{
+    truth?: string;
+    confidence?: number;
+    reasoning?: string;
+    [key: string]: any;
+  }>;
 }
 
 interface UseWebSocketReturn {

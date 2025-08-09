@@ -61,16 +61,18 @@ export async function POST(request: NextRequest) {
       throw new Error('No user message found');
     }
 
-    // Send "hello world" message via WebSocket when chat completion is requested
-    broadcastToClients({
-      type: 'chat_completion_triggered',
-      message: 'hello world',
-      timestamp: new Date().toISOString(),
-      completionId
-    });
-
     // Run bullshit detection on the user message content
     const bsResult = await detectBullshit(mostRecentUserMessage.content);
+
+    // Send full bullshit detection results via WebSocket
+    broadcastToClients({
+      type: 'chat_completion_triggered',
+      message: 'Bullshit detection complete',
+      timestamp: new Date().toISOString(),
+      completionId,
+      userMessage: mostRecentUserMessage.content,
+      bullshitDetection: bsResult
+    });
 
     // Create a readable stream for Server-Sent Events
     const stream = new ReadableStream({
