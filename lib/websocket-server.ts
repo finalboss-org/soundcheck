@@ -52,7 +52,7 @@ export function getWebSocketServer(): WebSocketServer {
       });
     });
 
-    wss.on('error', (error: any) => {
+    wss.on('error', (error: Error & { code?: string }) => {
       if (error.code === 'EADDRINUSE') {
         console.log('WebSocket server port 3001 already in use - this is expected during development');
         return;
@@ -66,7 +66,7 @@ export function getWebSocketServer(): WebSocketServer {
     console.log('WebSocket server started on port 3001');
     return wss;
 
-  } catch (error: any) {
+  } catch (error: Error & { code?: string }) {
     if (error.code === 'EADDRINUSE') {
       console.log('WebSocket server port 3001 already in use - reusing existing server');
       // If we can't create a new server, assume one exists and try to find it
@@ -83,7 +83,7 @@ export function getWebSocketServer(): WebSocketServer {
 }
 
 // Function to broadcast message to all connected clients
-export function broadcastToClients(message: any) {
+export function broadcastToClients(message: unknown) {
   try {
     const wsServer = getWebSocketServer();
 
