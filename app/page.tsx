@@ -15,15 +15,29 @@ export default function Home() {
   const [bsAlert, setBsAlert] = useState<{ message: string } | null>(null);
   const [permissionError, setPermissionError] = useState(false);
   const [audioData, setAudioData] = useState<Uint8Array | undefined>();
-  
+
   // WebSocket connection
   const { isConnected, lastMessage, sendMessage } = useWebSocket();
+
+  // Initialize WebSocket server when component mounts
+  useEffect(() => {
+    const initWebSocketServer = async () => {
+      try {
+        await fetch('/api/websocket/init', { method: 'POST' });
+        console.log('WebSocket server initialized');
+      } catch (error) {
+        console.error('Failed to initialize WebSocket server:', error);
+      }
+    };
+
+    initWebSocketServer();
+  }, []);
 
   // Handle incoming WebSocket messages
   useEffect(() => {
     if (lastMessage) {
       console.log('Processing WebSocket message:', lastMessage);
-      
+
       // Handle different message types
       switch (lastMessage.type) {
         case 'chat_completion_triggered':
@@ -103,7 +117,7 @@ export default function Home() {
       <main className="py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-            
+
             {/* Stats Section */}
             <div className="border-b border-b-gray-900/10">
               <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -132,8 +146,8 @@ export default function Home() {
 
             {permissionError && (
               <div className="mt-6">
-                <PermissionError 
-                  browser="chrome" 
+                <PermissionError
+                  browser="chrome"
                   onRetry={handlePermissionRetry}
                 />
               </div>
@@ -158,7 +172,7 @@ export default function Home() {
                   onRecordingToggle={handleRecordingToggle}
                   onMuteToggle={handleMuteToggle}
                 />
-                
+
                 {/* WebSocket Test Button */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <button
@@ -178,7 +192,7 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-base/7 font-semibold text-gray-900">Live Transcription</h2>
                   {transcription && (
-                    <button 
+                    <button
                       onClick={handleClearTranscription}
                       className="text-sm/6 font-semibold text-indigo-600 hover:text-indigo-500"
                     >

@@ -49,7 +49,7 @@ export function useWebSocket(url: string = 'ws://localhost:3001'): UseWebSocketR
       wsRef.current.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
-        
+
         // Attempt to reconnect after 3 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('Attempting to reconnect...');
@@ -84,10 +84,14 @@ export function useWebSocket(url: string = 'ws://localhost:3001'): UseWebSocketR
   }, [connect]);
 
   useEffect(() => {
-    connect();
+    // Add a small delay to allow server initialization to complete
+    const connectTimeout = setTimeout(() => {
+      connect();
+    }, 1000);
 
     // Cleanup on unmount
     return () => {
+      clearTimeout(connectTimeout);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
