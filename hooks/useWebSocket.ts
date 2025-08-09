@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Vapi from '@vapi-ai/web';
 
 interface WebSocketMessage {
   type: string;
@@ -33,13 +34,29 @@ export function useWebSocket(url: string = 'ws://localhost:3001'): UseWebSocketR
     try {
       wsRef.current = new WebSocket(url);
 
-      wsRef.current.onopen = () => {
+      wsRef.current.onopen = async () => {
         console.log('WebSocket connected');
         setIsConnected(true);
         // Clear any reconnection timeout
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;
+        }
+
+        // Initialize Vapi after successful websocket connection
+        try {
+          const vapiToken = process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN;
+          const vapiAssistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
+
+          if (vapiToken && vapiAssistantId) {
+            const vapiInstance = new Vapi(vapiToken);
+            const response = await vapiInstance.start(vapiAssistantId);
+            console.log('Vapi response:', response);
+          } else {
+            console.warn('Vapi credentials not found. Please set NEXT_PUBLIC_VAPI_WEB_TOKEN and NEXT_PUBLIC_VAPI_ASSISTANT_ID environment variables.');
+          }
+        } catch (error) {
+          console.error('Error initializing Vapi:', error);
         }
       };
 
