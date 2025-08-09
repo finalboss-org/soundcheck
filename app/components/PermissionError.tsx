@@ -12,7 +12,7 @@ export default function PermissionError({ browser, onRetry }: PermissionErrorPro
         return (
           <ol className="list-decimal list-inside space-y-2 text-sm">
             <li>Click the camera icon in the address bar</li>
-            <li>Select "Allow" for microphone access</li>
+            <li>Select &quot;Allow&quot; for microphone access</li>
             <li>Reload the page</li>
           </ol>
         );
@@ -28,7 +28,7 @@ export default function PermissionError({ browser, onRetry }: PermissionErrorPro
         return (
           <ol className="list-decimal list-inside space-y-2 text-sm">
             <li>Go to Safari {">"} Settings for This Website</li>
-            <li>Change Microphone to "Allow"</li>
+            <li>Change Microphone to &quot;Allow&quot;</li>
             <li>Reload the page</li>
           </ol>
         );
