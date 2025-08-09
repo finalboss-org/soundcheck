@@ -10,9 +10,13 @@ interface WebSocketMessage {
   completionId?: string;
   userMessage?: string;
   bullshitDetection?: Array<{
-    truth?: string;
-    confidence?: number;
+    transcript?: string;
+    claim?: string;
+    summary?: string;
+    bullshitLevel?: number;  // 0-5 scale (0 = no bullshit, 5 = maximum bullshit)
+    confidence?: number;     // 0-5 scale confidence in the evaluation
     reasoning?: string;
+    truth?: string;
     [key: string]: any;
   }>;
 }

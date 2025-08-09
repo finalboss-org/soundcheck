@@ -49,27 +49,55 @@ export default function Home() {
           if (bsData && bsData.length > 0) {
             const result = bsData[0];
 
-            // Update detection count and confidence
-            setDetectionCount(prev => prev + 1);
-            setLastConfidence(result.confidence?.toString() || '--');
+                        // Parse bullshitLevel and confidence as numbers (both use 0-5 scale)
+            const bullshitLevel = result.bullshitLevel ? parseFloat(result.bullshitLevel.toString()) : 0;
+            const confidenceNum = result.confidence ? parseFloat(result.confidence.toString()) : 0;
+            const isValidBullshitLevel = !isNaN(bullshitLevel);
+            const isValidConfidence = !isNaN(confidenceNum);
 
-            // Show BS alert if confidence is high
-            if (result.confidence && parseFloat(result.confidence.toString()) > 0.7) {
+            // Update confidence display (convert to 0-5 scale display)
+            setLastConfidence(isValidConfidence ? confidenceNum.toFixed(1) : '--');
+
+            // Check for BS detection using proper 0-5 scales:
+            // - bullshitLevel > 3 indicates significant BS (60%+ on 0-5 scale)
+            // - confidence > 2.5 indicates reasonable confidence in the assessment
+            const bsDetected = isValidBullshitLevel && bullshitLevel > 3 &&
+                             isValidConfidence && confidenceNum > 2.5;
+
+            if (bsDetected) {
+              // Update detection count only when BS is actually detected
+              setDetectionCount(prev => prev + 1);
+
+              // Show BS alert
               setBsAlert({ message: `Potential BS detected: ${result.truth || 'Truth unknown'}` });
               // Auto-dismiss after 5 seconds
               setTimeout(() => setBsAlert(null), 5000);
-            }
 
-            const transcriptionText = `
+              // Add detailed transcription for BS detections
+              const transcriptionText = `
 === BULLSHIT DETECTION RESULTS ===
 User Message: ${lastMessage.userMessage || 'Unknown'}
 Truth: ${result.truth || 'No truth provided'}
-Confidence: ${result.confidence || 'Unknown'}
+Bullshit Level: ${bullshitLevel.toFixed(1)}/5 (${(bullshitLevel/5*100).toFixed(0)}%)
+Confidence: ${confidenceNum.toFixed(1)}/5 (${(confidenceNum/5*100).toFixed(0)}%)
 Reasoning: ${result.reasoning || 'No reasoning provided'}
 ====================================
 
 `;
-            setTranscription(prev => prev + transcriptionText);
+              setTranscription(prev => prev + transcriptionText);
+            } else {
+              // Just log the check without incrementing count or showing popup
+              const transcriptionText = `
+=== BS CHECK COMPLETED ===
+User Message: ${lastMessage.userMessage || 'Unknown'}
+Bullshit Level: ${isValidBullshitLevel ? bullshitLevel.toFixed(1) : 'Unknown'}/5
+Confidence: ${isValidConfidence ? confidenceNum.toFixed(1) : 'Unknown'}/5
+Result: No significant BS detected (level=${bullshitLevel.toFixed(1)}, confidence=${confidenceNum.toFixed(1)})
+====================================
+
+`;
+              setTranscription(prev => prev + transcriptionText);
+            }
           } else {
             setTranscription(prev => prev + `[WebSocket] ${lastMessage.message}\n`);
           }
@@ -261,31 +289,38 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
                 <TestControls
                   isRecording={isRecording}
                   onToggleRecording={handleRecordingToggle}
-                  onTriggerBS={(confidence, message) => {
-                    // Simulate BS detection
+                                    onTriggerBS={(confidence, message) => {
+                    // Simulate BS detection using 0-5 scale
+                    const bullshitLevel = confidence; // Use the same value for testing
                     const mockResult = {
-                      confidence: confidence.toString(),
+                      bullshitLevel: bullshitLevel,
+                      confidence: confidence,
                       truth: 'This is the actual truth',
                       reasoning: 'Analysis shows this statement is false',
                     };
-                    
-                    // Update stats
-                    setDetectionCount(prev => prev + 1);
-                    setLastConfidence(mockResult.confidence);
-                    
-                    // Show alert for high confidence
-                    if (confidence > 0.7) {
+
+                    // Update confidence display
+                    setLastConfidence(confidence.toFixed(1));
+
+                    // Use same logic as WebSocket handler: bullshitLevel > 3 && confidence > 2.5
+                    const shouldTriggerAlert = bullshitLevel > 3 && confidence > 2.5;
+
+                    if (shouldTriggerAlert) {
+                      // Only increment counter when BS is actually detected
+                      setDetectionCount(prev => prev + 1);
                       setBsAlert({ message: `BS Detected: "${message}"` });
                       setTimeout(() => setBsAlert(null), 5000);
                     }
-                    
-                    // Add to transcription
+
+                    // Add to transcription with proper formatting
                     const transcriptionText = `
-=== BULLSHIT DETECTION RESULTS ===
+=== ${shouldTriggerAlert ? 'BULLSHIT DETECTION RESULTS' : 'BS CHECK COMPLETED'} ===
 User Message: ${message}
 Truth: ${mockResult.truth}
-Confidence: ${mockResult.confidence}
+Bullshit Level: ${bullshitLevel.toFixed(1)}/5 (${(bullshitLevel/5*100).toFixed(0)}%)
+Confidence: ${confidence.toFixed(1)}/5 (${(confidence/5*100).toFixed(0)}%)
 Reasoning: ${mockResult.reasoning}
+Result: ${shouldTriggerAlert ? 'BS detected' : 'No significant BS detected'}
 ====================================
 
 `;

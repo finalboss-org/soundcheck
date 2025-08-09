@@ -7,18 +7,18 @@ interface TestControlsProps {
   isRecording: boolean;
 }
 
-export default function TestControls({ 
-  onTriggerBS, 
-  onSimulateTranscription, 
+export default function TestControls({
+  onTriggerBS,
+  onSimulateTranscription,
   onToggleRecording,
-  isRecording 
+  isRecording
 }: TestControlsProps) {
   const testScenarios = [
-    { confidence: 0.95, message: "The Earth is flat", truth: "The Earth is an oblate spheroid" },
-    { confidence: 0.85, message: "We only use 10% of our brain", truth: "We use virtually all of our brain" },
-    { confidence: 0.75, message: "Lightning never strikes twice", truth: "Lightning can strike the same place multiple times" },
-    { confidence: 0.45, message: "Organic food is pesticide-free", truth: "Organic farming uses natural pesticides" },
-    { confidence: 0.25, message: "Glass is a liquid", truth: "Glass is an amorphous solid" },
+    { confidence: 4.5, message: "The Earth is flat", truth: "The Earth is an oblate spheroid" },
+    { confidence: 4.0, message: "We only use 10% of our brain", truth: "We use virtually all of our brain" },
+    { confidence: 3.5, message: "Lightning never strikes twice", truth: "Lightning can strike the same place multiple times" },
+    { confidence: 2.5, message: "Organic food is pesticide-free", truth: "Organic farming uses natural pesticides" },
+    { confidence: 1.5, message: "Glass is a liquid", truth: "Glass is an amorphous solid" },
   ];
 
   const transcriptionSamples = [
@@ -31,15 +31,15 @@ export default function TestControls({
   return (
     <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
       <h3 className="text-base/7 font-semibold text-gray-900 mb-4">Test Controls</h3>
-      
+
       {/* Recording Simulation */}
       <div className="mb-6">
         <h4 className="text-sm/6 font-medium text-gray-700 mb-2">Recording Simulation</h4>
         <button
           onClick={onToggleRecording}
           className={`px-4 py-2 rounded-md font-medium text-sm/6 transition-colors ${
-            isRecording 
-              ? 'bg-red-600 text-white hover:bg-red-700' 
+            isRecording
+              ? 'bg-red-600 text-white hover:bg-red-700'
               : 'bg-green-600 text-white hover:bg-green-700'
           }`}
         >
@@ -60,11 +60,11 @@ export default function TestControls({
               <div className="flex justify-between items-center">
                 <span className="text-sm/6 text-gray-900">{scenario.message}</span>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  scenario.confidence > 0.8 ? 'bg-red-100 text-red-700' :
-                  scenario.confidence > 0.5 ? 'bg-orange-100 text-orange-700' :
+                  scenario.confidence > 3.5 ? 'bg-red-100 text-red-700' :
+                  scenario.confidence > 2.5 ? 'bg-orange-100 text-orange-700' :
                   'bg-green-100 text-green-700'
                 }`}>
-                  {(scenario.confidence * 100).toFixed(0)}%
+                  {(scenario.confidence / 5 * 100).toFixed(0)}%
                 </span>
               </div>
             </button>
