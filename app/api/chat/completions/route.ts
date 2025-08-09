@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     // Create a readable stream for Server-Sent Events
     const stream = new ReadableStream({
       start(controller) {
-        // Send the response content
+        // Send the truth string from bullshit detector
         controller.enqueue(createChunkData(completionId, responseContent));
 
         // Send the end token

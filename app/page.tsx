@@ -14,10 +14,12 @@ export default function Home() {
   const [transcription, setTranscription] = useState('');
   const [bsAlert, setBsAlert] = useState<{ message: string } | null>(null);
   const [permissionError, setPermissionError] = useState(false);
-  const [audioData, setAudioData] = useState<Uint8Array | undefined>();
+  const [audioData] = useState<Uint8Array | undefined>();
+  const [detectionCount, setDetectionCount] = useState(0);
+  const [lastConfidence, setLastConfidence] = useState<string>('--');
 
   // WebSocket connection
-  const { isConnected, lastMessage, sendMessage } = useWebSocket();
+  const { isConnected, lastMessage } = useWebSocket();
 
   // Initialize WebSocket server when component mounts
   useEffect(() => {
@@ -45,6 +47,18 @@ export default function Home() {
           const bsData = lastMessage.bullshitDetection;
           if (bsData && bsData.length > 0) {
             const result = bsData[0];
+
+            // Update detection count and confidence
+            setDetectionCount(prev => prev + 1);
+            setLastConfidence(result.confidence?.toString() || '--');
+
+            // Show BS alert if confidence is high
+            if (result.confidence && parseFloat(result.confidence.toString()) > 0.7) {
+              setBsAlert({ message: `Potential BS detected: ${result.truth || 'Truth unknown'}` });
+              // Auto-dismiss after 5 seconds
+              setTimeout(() => setBsAlert(null), 5000);
+            }
+
             const transcriptionText = `
 === BULLSHIT DETECTION RESULTS ===
 User Message: ${lastMessage.userMessage || 'Unknown'}
@@ -101,13 +115,17 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
         },
         body: JSON.stringify({
           messages: [
-            { role: 'user', content: 'Test message to trigger WebSocket' }
+            { role: 'user', content: '2 plus 2 equals five' }
           ]
         }),
       });
 
       if (response.ok) {
         console.log('Chat completions request sent successfully');
+        // Add a sample detection to test the UI
+        setTimeout(() => {
+          setTranscription(prev => prev + '\n[Testing UI] Waiting for WebSocket response...\n');
+        }, 500);
       }
     } catch (error) {
       console.error('Error testing chat completions:', error);
@@ -150,11 +168,16 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
                 </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-gray-900/5 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8 lg:border-l">
                   <dt className="text-sm/6 font-medium text-gray-500">Detections</dt>
-                  <dd className="w-full flex-none text-3xl/10 font-medium tracking-tight text-gray-900">0</dd>
+                  <dd className={`w-full flex-none text-3xl/10 font-medium tracking-tight ${detectionCount > 0 ? 'text-orange-600' : 'text-gray-900'} transition-all duration-300`}>{detectionCount}</dd>
                 </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-gray-900/5 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8 sm:border-l">
                   <dt className="text-sm/6 font-medium text-gray-500">Confidence</dt>
-                  <dd className="w-full flex-none text-3xl/10 font-medium tracking-tight text-gray-900">--</dd>
+                  <dd className={`w-full flex-none text-3xl/10 font-medium tracking-tight transition-all duration-300 ${
+                    lastConfidence === '--' ? 'text-gray-900' :
+                    parseFloat(lastConfidence) > 0.8 ? 'text-red-600' :
+                    parseFloat(lastConfidence) > 0.5 ? 'text-orange-600' :
+                    'text-green-600'
+                  }`}>{lastConfidence}</dd>
                 </div>
               </dl>
             </div>
