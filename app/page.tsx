@@ -6,6 +6,7 @@ import AudioVisualizer from './components/AudioVisualizer';
 import ConnectionStatus from './components/ConnectionStatus';
 import RecordingControls from './components/RecordingControls';
 import PermissionError from './components/PermissionError';
+import TestControls from './components/TestControls';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 export default function Home() {
@@ -142,6 +143,7 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
             </div>
             <div className="flex items-center gap-x-4">
               <span className="text-sm/6 text-gray-500">Real-time BS Detection</span>
+              <span className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-100 rounded-full">Test Mode</span>
             </div>
           </div>
         </div>
@@ -197,7 +199,7 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
               <div>
                 <h2 className="text-base/7 font-semibold text-gray-900 mb-6">Audio Analysis</h2>
                 <div className="overflow-hidden rounded-xl border border-gray-200">
-                  <AudioVisualizer audioData={audioData} />
+                  <AudioVisualizer audioData={audioData} isRecording={isRecording} />
                 </div>
               </div>
 
@@ -251,6 +253,58 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Test Controls - Remove this section when VAPI is integrated */}
+              <div>
+                <h2 className="text-base/7 font-semibold text-gray-900 mb-6">Development Testing</h2>
+                <TestControls
+                  isRecording={isRecording}
+                  onToggleRecording={handleRecordingToggle}
+                  onTriggerBS={(confidence, message) => {
+                    // Simulate BS detection
+                    const mockResult = {
+                      confidence: confidence.toString(),
+                      truth: 'This is the actual truth',
+                      reasoning: 'Analysis shows this statement is false',
+                    };
+                    
+                    // Update stats
+                    setDetectionCount(prev => prev + 1);
+                    setLastConfidence(mockResult.confidence);
+                    
+                    // Show alert for high confidence
+                    if (confidence > 0.7) {
+                      setBsAlert({ message: `BS Detected: "${message}"` });
+                      setTimeout(() => setBsAlert(null), 5000);
+                    }
+                    
+                    // Add to transcription
+                    const transcriptionText = `
+=== BULLSHIT DETECTION RESULTS ===
+User Message: ${message}
+Truth: ${mockResult.truth}
+Confidence: ${mockResult.confidence}
+Reasoning: ${mockResult.reasoning}
+====================================
+
+`;
+                    setTranscription(prev => prev + transcriptionText);
+                  }}
+                  onSimulateTranscription={(text) => {
+                    // Simulate streaming transcription
+                    let index = 0;
+                    const interval = setInterval(() => {
+                      if (index < text.length) {
+                        setTranscription(prev => prev + text[index]);
+                        index++;
+                      } else {
+                        clearInterval(interval);
+                        setTranscription(prev => prev + '\n');
+                      }
+                    }, 30); // Simulate typing speed
+                  }}
+                />
               </div>
             </div>
           </div>
