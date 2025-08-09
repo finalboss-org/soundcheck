@@ -6,6 +6,7 @@ import AudioVisualizer from './components/AudioVisualizer';
 import ConnectionStatus from './components/ConnectionStatus';
 import RecordingControls from './components/RecordingControls';
 import PermissionError from './components/PermissionError';
+import TestControls from './components/TestControls';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 export default function Home() {
@@ -14,10 +15,12 @@ export default function Home() {
   const [transcription, setTranscription] = useState('');
   const [bsAlert, setBsAlert] = useState<{ message: string } | null>(null);
   const [permissionError, setPermissionError] = useState(false);
-  const [audioData, setAudioData] = useState<Uint8Array | undefined>();
+  const [audioData] = useState<Uint8Array | undefined>();
+  const [detectionCount, setDetectionCount] = useState(0);
+  const [lastConfidence, setLastConfidence] = useState<string>('--');
 
   // WebSocket connection
-  const { isConnected, lastMessage, sendMessage } = useWebSocket();
+  const { isConnected, lastMessage } = useWebSocket();
 
   // Initialize WebSocket server when component mounts
   useEffect(() => {
@@ -45,16 +48,56 @@ export default function Home() {
           const bsData = lastMessage.bullshitDetection;
           if (bsData && bsData.length > 0) {
             const result = bsData[0];
-            const transcriptionText = `
+
+                        // Parse bullshitLevel and confidence as numbers (both use 0-5 scale)
+            const bullshitLevel = result.bullshitLevel ? parseFloat(result.bullshitLevel.toString()) : 0;
+            const confidenceNum = result.confidence ? parseFloat(result.confidence.toString()) : 0;
+            const isValidBullshitLevel = !isNaN(bullshitLevel);
+            const isValidConfidence = !isNaN(confidenceNum);
+
+            // Update confidence display (convert to 0-5 scale display)
+            setLastConfidence(isValidConfidence ? confidenceNum.toFixed(1) : '--');
+
+            // Check for BS detection using proper 0-5 scales:
+            // - bullshitLevel > 3 indicates significant BS (60%+ on 0-5 scale)
+            // - confidence > 2.5 indicates reasonable confidence in the assessment
+            const bsDetected = isValidBullshitLevel && bullshitLevel > 3 &&
+                             isValidConfidence && confidenceNum > 2.5;
+
+            if (bsDetected) {
+              // Update detection count only when BS is actually detected
+              setDetectionCount(prev => prev + 1);
+
+              // Show BS alert
+              setBsAlert({ message: `Potential BS detected: ${result.truth || 'Truth unknown'}` });
+              // Auto-dismiss after 5 seconds
+              setTimeout(() => setBsAlert(null), 5000);
+
+              // Add detailed transcription for BS detections
+              const transcriptionText = `
 === BULLSHIT DETECTION RESULTS ===
 User Message: ${lastMessage.userMessage || 'Unknown'}
 Truth: ${result.truth || 'No truth provided'}
-Confidence: ${result.confidence || 'Unknown'}
+Bullshit Level: ${bullshitLevel.toFixed(1)}/5 (${(bullshitLevel/5*100).toFixed(0)}%)
+Confidence: ${confidenceNum.toFixed(1)}/5 (${(confidenceNum/5*100).toFixed(0)}%)
 Reasoning: ${result.reasoning || 'No reasoning provided'}
 ====================================
 
 `;
-            setTranscription(prev => prev + transcriptionText);
+              setTranscription(prev => prev + transcriptionText);
+            } else {
+              // Just log the check without incrementing count or showing popup
+              const transcriptionText = `
+=== BS CHECK COMPLETED ===
+User Message: ${lastMessage.userMessage || 'Unknown'}
+Bullshit Level: ${isValidBullshitLevel ? bullshitLevel.toFixed(1) : 'Unknown'}/5
+Confidence: ${isValidConfidence ? confidenceNum.toFixed(1) : 'Unknown'}/5
+Result: No significant BS detected (level=${bullshitLevel.toFixed(1)}, confidence=${confidenceNum.toFixed(1)})
+====================================
+
+`;
+              setTranscription(prev => prev + transcriptionText);
+            }
           } else {
             setTranscription(prev => prev + `[WebSocket] ${lastMessage.message}\n`);
           }
@@ -101,13 +144,17 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
         },
         body: JSON.stringify({
           messages: [
-            { role: 'user', content: 'Test message to trigger WebSocket' }
+            { role: 'user', content: '2 plus 2 equals five' }
           ]
         }),
       });
 
       if (response.ok) {
         console.log('Chat completions request sent successfully');
+        // Add a sample detection to test the UI
+        setTimeout(() => {
+          setTranscription(prev => prev + '\n[Testing UI] Waiting for WebSocket response...\n');
+        }, 500);
       }
     } catch (error) {
       console.error('Error testing chat completions:', error);
@@ -124,6 +171,7 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
             </div>
             <div className="flex items-center gap-x-4">
               <span className="text-sm/6 text-gray-500">Real-time BS Detection</span>
+              <span className="px-2 py-1 text-xs font-medium text-orange-700 bg-orange-100 rounded-full">Test Mode</span>
             </div>
           </div>
         </div>
@@ -150,11 +198,16 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
                 </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-gray-900/5 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8 lg:border-l">
                   <dt className="text-sm/6 font-medium text-gray-500">Detections</dt>
-                  <dd className="w-full flex-none text-3xl/10 font-medium tracking-tight text-gray-900">0</dd>
+                  <dd className={`w-full flex-none text-3xl/10 font-medium tracking-tight ${detectionCount > 0 ? 'text-orange-600' : 'text-gray-900'} transition-all duration-300`}>{detectionCount}</dd>
                 </div>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-gray-900/5 px-4 py-10 sm:px-6 lg:border-t-0 xl:px-8 sm:border-l">
                   <dt className="text-sm/6 font-medium text-gray-500">Confidence</dt>
-                  <dd className="w-full flex-none text-3xl/10 font-medium tracking-tight text-gray-900">--</dd>
+                  <dd className={`w-full flex-none text-3xl/10 font-medium tracking-tight transition-all duration-300 ${
+                    lastConfidence === '--' ? 'text-gray-900' :
+                    parseFloat(lastConfidence) > 0.8 ? 'text-red-600' :
+                    parseFloat(lastConfidence) > 0.5 ? 'text-orange-600' :
+                    'text-green-600'
+                  }`}>{lastConfidence}</dd>
                 </div>
               </dl>
             </div>
@@ -174,7 +227,7 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
               <div>
                 <h2 className="text-base/7 font-semibold text-gray-900 mb-6">Audio Analysis</h2>
                 <div className="overflow-hidden rounded-xl border border-gray-200">
-                  <AudioVisualizer audioData={audioData} />
+                  <AudioVisualizer audioData={audioData} isRecording={isRecording} />
                 </div>
               </div>
 
@@ -228,6 +281,65 @@ Reasoning: ${result.reasoning || 'No reasoning provided'}
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Test Controls - Remove this section when VAPI is integrated */}
+              <div>
+                <h2 className="text-base/7 font-semibold text-gray-900 mb-6">Development Testing</h2>
+                <TestControls
+                  isRecording={isRecording}
+                  onToggleRecording={handleRecordingToggle}
+                                    onTriggerBS={(confidence, message) => {
+                    // Simulate BS detection using 0-5 scale
+                    const bullshitLevel = confidence; // Use the same value for testing
+                    const mockResult = {
+                      bullshitLevel: bullshitLevel,
+                      confidence: confidence,
+                      truth: 'This is the actual truth',
+                      reasoning: 'Analysis shows this statement is false',
+                    };
+
+                    // Update confidence display
+                    setLastConfidence(confidence.toFixed(1));
+
+                    // Use same logic as WebSocket handler: bullshitLevel > 3 && confidence > 2.5
+                    const shouldTriggerAlert = bullshitLevel > 3 && confidence > 2.5;
+
+                    if (shouldTriggerAlert) {
+                      // Only increment counter when BS is actually detected
+                      setDetectionCount(prev => prev + 1);
+                      setBsAlert({ message: `BS Detected: "${message}"` });
+                      setTimeout(() => setBsAlert(null), 5000);
+                    }
+
+                    // Add to transcription with proper formatting
+                    const transcriptionText = `
+=== ${shouldTriggerAlert ? 'BULLSHIT DETECTION RESULTS' : 'BS CHECK COMPLETED'} ===
+User Message: ${message}
+Truth: ${mockResult.truth}
+Bullshit Level: ${bullshitLevel.toFixed(1)}/5 (${(bullshitLevel/5*100).toFixed(0)}%)
+Confidence: ${confidence.toFixed(1)}/5 (${(confidence/5*100).toFixed(0)}%)
+Reasoning: ${mockResult.reasoning}
+Result: ${shouldTriggerAlert ? 'BS detected' : 'No significant BS detected'}
+====================================
+
+`;
+                    setTranscription(prev => prev + transcriptionText);
+                  }}
+                  onSimulateTranscription={(text) => {
+                    // Simulate streaming transcription
+                    let index = 0;
+                    const interval = setInterval(() => {
+                      if (index < text.length) {
+                        setTranscription(prev => prev + text[index]);
+                        index++;
+                      } else {
+                        clearInterval(interval);
+                        setTranscription(prev => prev + '\n');
+                      }
+                    }, 30); // Simulate typing speed
+                  }}
+                />
               </div>
             </div>
           </div>
