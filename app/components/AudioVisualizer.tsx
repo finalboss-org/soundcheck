@@ -9,7 +9,7 @@ interface AudioVisualizerProps {
 
 export default function AudioVisualizer({ audioData, isRecording = false }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(0);
   const [mockBars] = useState(() => Array(32).fill(0).map(() => Math.random()));
 
   useEffect(() => {
@@ -32,11 +32,11 @@ export default function AudioVisualizer({ audioData, isRecording = false }: Audi
           // Animate bars with sine wave
           const offset = timestamp * 0.001;
           const height = Math.abs(Math.sin(offset + i * 0.3)) * baseHeight * maxHeight;
-          
+
           // Draw bar
           const x = i * barWidth;
           const y = canvas.height - height;
-          
+
           // Gradient based on height
           const intensity = height / maxHeight;
           if (intensity > 0.8) {
@@ -46,7 +46,7 @@ export default function AudioVisualizer({ audioData, isRecording = false }: Audi
           } else {
             ctx.fillStyle = 'rgb(34, 197, 94)'; // green-500
           }
-          
+
           ctx.fillRect(x + 2, y, barWidth - 4, height);
         });
       } else {
@@ -72,7 +72,7 @@ export default function AudioVisualizer({ audioData, isRecording = false }: Audi
   }, [isRecording, mockBars]);
 
   return (
-    <canvas 
+    <canvas
       ref={canvasRef}
       id="audioVisualizer"
       className="w-full h-48 bg-gray-50"
