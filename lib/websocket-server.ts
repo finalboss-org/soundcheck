@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
 
-// Global WebSocket server instance - using globalThis to persist across hot reloads
+// Global WebSocket server instance
 declare global {
   var __websocketServer: WebSocketServer | undefined;
 }
@@ -13,9 +13,17 @@ export function getWebSocketServer(): WebSocketServer {
   }
 
   try {
-    // Create WebSocket server that can be attached to existing HTTP server
+    // In production, try to use the same port as the main app
+    // In development, use a separate port to avoid conflicts
+    const isProduction = process.env.NODE_ENV === 'production';
+    const mainPort = parseInt(process.env.PORT || '3000', 10);
+    const wsPort = isProduction ? mainPort : 3001;
+
+    console.log(`Starting WebSocket server on port ${wsPort} (${isProduction ? 'production' : 'development'} mode)`);
+
+    // Create WebSocket server
     const wss = new WebSocketServer({
-      port: 3001, // Use a different port for WebSocket
+      port: wsPort,
       clientTracking: true
     });
 
@@ -25,7 +33,8 @@ export function getWebSocketServer(): WebSocketServer {
       // Send welcome message
       ws.send(JSON.stringify({
         type: 'connected',
-        message: 'WebSocket connection established'
+        message: 'WebSocket connection established',
+        timestamp: new Date().toISOString()
       }));
 
       ws.on('message', (data) => {
@@ -36,7 +45,8 @@ export function getWebSocketServer(): WebSocketServer {
           // Echo the message back for now
           ws.send(JSON.stringify({
             type: 'echo',
-            message: `Server received: ${message.content || 'unknown'}`
+            message: `Server received: ${message.content || 'unknown'}`,
+            timestamp: new Date().toISOString()
           }));
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -54,7 +64,7 @@ export function getWebSocketServer(): WebSocketServer {
 
     wss.on('error', (error: Error & { code?: string }) => {
       if (error.code === 'EADDRINUSE') {
-        console.log('WebSocket server port 3001 already in use - this is expected during development');
+        console.log(`WebSocket server port ${wsPort} already in use - this is expected during development`);
         return;
       }
       console.error('WebSocket server error:', error);
@@ -63,13 +73,13 @@ export function getWebSocketServer(): WebSocketServer {
     // Store in global scope for hot reload persistence
     globalThis.__websocketServer = wss;
 
-    console.log('WebSocket server started on port 3001');
+    console.log(`WebSocket server started on port ${wsPort}`);
     return wss;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.code === 'EADDRINUSE') {
-      console.log('WebSocket server port 3001 already in use - reusing existing server');
+      console.log('WebSocket server port already in use - reusing existing server');
       // If we can't create a new server, assume one exists and try to find it
       // In development, this might happen due to hot reloading
       if (globalThis.__websocketServer) {

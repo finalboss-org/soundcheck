@@ -11,7 +11,9 @@ A WebSocket connection has been established between the client and server. When 
 ### Server Side
 
 - **WebSocket Server**: Located in `lib/websocket-server.ts`
-  - Runs on port 3001
+  - Environment-aware port selection:
+    - Development: Runs on port 3001 (separate from HTTP)
+    - Production: Runs on same port as main app (typically 3000 or PORT env var)
   - Handles client connections and message broadcasting
   - Provides `getWebSocketServer()` and `broadcastToClients()` functions
 
@@ -28,6 +30,9 @@ A WebSocket connection has been established between the client and server. When 
 
 - **WebSocket Hook**: `hooks/useWebSocket.ts`
   - React hook for managing WebSocket connections
+  - Auto-detects WebSocket URL based on environment:
+    - Development: Connects to `ws://localhost:3001`
+    - Production: Connects to same host/port as main app
   - Handles connection, reconnection, and message handling
   - Provides connection status and message sending capabilities
 
@@ -49,7 +54,11 @@ A WebSocket connection has been established between the client and server. When 
    npm run dev
    ```
 
-3. **Test the WebSocket**:
+   This will start:
+   - Next.js HTTP server on port 3000
+   - WebSocket server on port 3001 (development) or same port (production)
+
+4. **Test the WebSocket**:
    - Open the application in browser
    - Check WebSocket connection status (should show 🟢 Connected)
    - Click "Test WebSocket (Trigger Chat Completion)" button
@@ -105,7 +114,9 @@ Messages sent over WebSocket follow this structure:
 
 ## Troubleshooting
 
-- **WebSocket won't connect**: Ensure the server is running and port 3001 is available
+- **WebSocket won't connect**:
+  - In development: Ensure WebSocket server is running on port 3001
+  - In production: Ensure both servers are running on the same port
 - **Messages not appearing**: Check browser console for WebSocket errors
 - **TypeScript errors**: Ensure `@types/ws` is installed
 

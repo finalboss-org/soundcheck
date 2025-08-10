@@ -5,18 +5,23 @@ export async function POST(request: NextRequest) {
   try {
     // Initialize the WebSocket server
     const wss = getWebSocketServer();
-    
-    return NextResponse.json({ 
-      success: true, 
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const mainPort = parseInt(process.env.PORT || '3000', 10);
+    const wsPort = isProduction ? mainPort : 3001;
+
+    return NextResponse.json({
+      success: true,
       message: 'WebSocket server initialized',
-      port: 3001,
+      port: wsPort,
+      environment: process.env.NODE_ENV,
       clients: wss.clients.size
     });
   } catch (error) {
     console.error('Error initializing WebSocket server:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to initialize WebSocket server',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -28,18 +33,23 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const wss = getWebSocketServer();
-    
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const mainPort = parseInt(process.env.PORT || '3000', 10);
+    const wsPort = isProduction ? mainPort : 3001;
+
     return NextResponse.json({
       success: true,
       status: 'WebSocket server is running',
-      port: 3001,
+      port: wsPort,
+      environment: process.env.NODE_ENV,
       clients: wss.clients.size
     });
   } catch (error) {
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'WebSocket server not initialized' 
+      {
+        success: false,
+        error: 'WebSocket server not initialized'
       },
       { status: 500 }
     );
