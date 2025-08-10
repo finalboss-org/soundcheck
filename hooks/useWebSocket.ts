@@ -35,7 +35,7 @@ export function useWebSocket(url?: string): UseWebSocketReturn {
 
     // In browser environment
     if (typeof window !== 'undefined') {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const protocol = process.env.NEXT_PUBLIC_NODE_ENV === 'development' ? 'ws:' : 'wss:';
       const host = window.location.hostname;
       const port = window.location.port;
 
